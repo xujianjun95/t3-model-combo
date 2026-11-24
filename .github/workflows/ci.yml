@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile Python scripts
+        run: python3 -m py_compile scripts/*.py
+
+      - name: Run unit tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Check SKILL.md, widget placeholders, and install.sh syntax
+        run: |
+          bash -n install.sh
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          skill = Path("SKILL.md").read_text(encoding="utf-8")
+          lines = skill.splitlines()
+          assert len(lines) < 250, f"SKILL.md too long: {len(lines)} lines"
+
+          match = re.match(r"^---\n(.*?)\n---\n", skill, flags=re.DOTALL)
+          assert match, "SKILL.md missing YAML frontmatter"
+          fm = match.group(1)
+          assert "name: t3-model-combo" in fm, "SKILL.md frontmatter missing name: t3-model-combo"
+          assert "description:" in fm, "SKILL.md frontmatter missing description"
+
+          widget = Path("ui/widget.html").read_text(encoding="utf-8")
+          assert "/*__PAYLOAD_JSON__*/" in widget, "ui/widget.html missing /*__PAYLOAD_JSON__*/ placeholder"
+          print("SKILL.md, ui/widget.html, and install.sh checks passed.")
+          PY

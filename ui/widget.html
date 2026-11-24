@@ -1,0 +1,1607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>T3 Model Combo — 模型性价比组合排行</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    color: var(--foreground, #18181b);
+    font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", sans-serif);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* 顶部信息栏与模式切换 */
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .meta-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted-foreground, #71717a);
+  }
+
+  .meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--secondary, rgba(127, 127, 127, 0.12));
+    color: var(--secondary-foreground, var(--foreground, #18181b));
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .meta-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--success, #22c55e);
+    flex-shrink: 0;
+  }
+  .meta-dot.stale { background: var(--warning, #f59e0b); }
+
+  .segmented {
+    display: inline-flex;
+    padding: 2px;
+    border-radius: var(--radius, 8px);
+    background: var(--secondary, rgba(127, 127, 127, 0.12));
+    border: 1px solid var(--border, rgba(127, 127, 127, 0.22));
+    gap: 2px;
+  }
+
+  .segmented button {
+    border: none;
+    background: transparent;
+    color: var(--muted-foreground, #71717a);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 10px;
+    border-radius: calc(var(--radius, 8px) - 2px);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .segmented button:hover {
+    color: var(--foreground, #18181b);
+  }
+
+  .segmented button.active {
+    background: var(--card, #ffffff);
+    color: var(--foreground, #18181b);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+
+  /* 区块卡片：遵守 16px 内边距与 var(--radius) */
+  .panel {
+    background: var(--card, rgba(127, 127, 127, 0.06));
+    color: var(--card-foreground, var(--foreground, #18181b));
+    border: 1px solid var(--border, rgba(127, 127, 127, 0.2));
+    border-radius: var(--radius, 10px);
+    padding: 16px;
+  }
+
+  .panel-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted-foreground, #71717a);
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .panel-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .link-btn {
+    border: none;
+    background: transparent;
+    color: var(--primary, #3b82f6);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 6px;
+  }
+  .link-btn:hover {
+    background: var(--accent-surface, rgba(59, 130, 246, 0.12));
+  }
+
+  /* 提供商/厂商胶囊 */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--border, rgba(127, 127, 127, 0.25));
+    background: transparent;
+    color: var(--muted-foreground, #71717a);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.14s ease;
+    max-width: 100%;
+  }
+
+  .chip:hover {
+    border-color: var(--ring, var(--primary, #3b82f6));
+    color: var(--foreground, #18181b);
+  }
+
+  .chip.selected {
+    background: var(--accent-surface, rgba(59, 130, 246, 0.14));
+    border-color: var(--primary, #3b82f6);
+    color: var(--foreground, #18181b);
+  }
+
+  .chip.disabled-provider {
+    opacity: 0.65;
+  }
+
+  .chip-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.38);
+  }
+
+  .chip-count {
+    font-size: 11px;
+    color: var(--muted-foreground, #71717a);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 自定义分组编辑器 */
+  .custom-editor {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border, rgba(127, 127, 127, 0.25));
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .editor-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .input {
+    background: var(--background, transparent);
+    color: var(--foreground, #18181b);
+    border: 1px solid var(--border, rgba(127, 127, 127, 0.3));
+    border-radius: calc(var(--radius, 8px) - 2px);
+    padding: 5px 9px;
+    font: inherit;
+    font-size: 12px;
+    outline: none;
+  }
+  .input:focus {
+    border-color: var(--ring, var(--primary, #3b82f6));
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: calc(var(--radius, 8px) - 2px);
+    border: 1px solid var(--border, rgba(127, 127, 127, 0.28));
+    background: var(--secondary, rgba(127, 127, 127, 0.12));
+    color: var(--secondary-foreground, var(--foreground, #18181b));
+    font: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.14s ease;
+    white-space: nowrap;
+  }
+  .btn:hover {
+    border-color: var(--ring, var(--primary, #3b82f6));
+  }
+  .btn.primary {
+    background: var(--primary, #3b82f6);
+    border-color: var(--primary, #3b82f6);
+    color: var(--primary-foreground, #ffffff);
+  }
+  .btn.primary:hover {
+    filter: brightness(1.06);
+  }
+  .btn.copied {
+    background: var(--success, #16a34a);
+    border-color: var(--success, #16a34a);
+    color: #ffffff;
+  }
+  .btn.sm {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+
+  /* 参数控制网格 */
+  .controls-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 12px;
+    align-items: end;
+  }
+
+  .ctrl-size { grid-column: span 3; }
+  .ctrl-pref { grid-column: span 5; }
+  .ctrl-min  { grid-column: span 2; }
+  .ctrl-budg { grid-column: span 2; }
+
+  .ctrl-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .ctrl-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted-foreground, #71717a);
+  }
+
+  .ctrl-val {
+    font-weight: 600;
+    color: var(--foreground, #18181b);
+    font-variant-numeric: tabular-nums;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--primary, #3b82f6);
+    cursor: pointer;
+    margin: 4px 0;
+  }
+
+  .pref-axis {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted-foreground, #71717a);
+    margin-top: -4px;
+  }
+
+  .ctrl-footer {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border, rgba(127, 127, 127, 0.16));
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--foreground, #18181b);
+    cursor: pointer;
+    user-select: none;
+  }
+  .toggle-label input {
+    accent-color: var(--primary, #3b82f6);
+    cursor: pointer;
+  }
+
+  /* 散点图 */
+  .chart-wrap {
+    position: relative;
+    width: 100%;
+    height: 224px;
+  }
+
+  .chart-svg {
+    width: 100%;
+    height: 224px;
+    display: block;
+    overflow: visible;
+  }
+
+  .chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--muted-foreground, #71717a);
+  }
+
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .legend-swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .chart-tooltip {
+    position: absolute;
+    pointer-events: none;
+    z-index: 20;
+    max-width: 240px;
+    padding: 8px 10px;
+    border-radius: var(--radius, 8px);
+    background: var(--popover, #18181b);
+    color: var(--popover-foreground, #fafafa);
+    border: 1px solid var(--border, rgba(127, 127, 127, 0.3));
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    font-size: 11px;
+    line-height: 1.45;
+    display: none;
+  }
+
+  /* 组合排行列表 */
+  .combo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .combo-card {
+    background: var(--card, rgba(127, 127, 127, 0.06));
+    border: 1px solid var(--border, rgba(127, 127, 127, 0.2));
+    border-radius: var(--radius, 10px);
+    padding: 14px 16px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .combo-card.top1 {
+    border-color: var(--primary, #3b82f6);
+  }
+
+  .combo-card.highlighted {
+    border-color: var(--ring, var(--primary, #3b82f6));
+    box-shadow: 0 0 0 2px var(--accent-surface, rgba(59, 130, 246, 0.22));
+  }
+
+  .combo-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .combo-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .rank-badge {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    background: var(--secondary, rgba(127, 127, 127, 0.14));
+    color: var(--muted-foreground, #71717a);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .rank-badge.r1 {
+    background: var(--primary, #3b82f6);
+    color: var(--primary-foreground, #ffffff);
+  }
+  .rank-badge.r2 {
+    background: var(--accent-surface, rgba(59, 130, 246, 0.18));
+    color: var(--primary, #3b82f6);
+  }
+  .rank-badge.r3 {
+    background: var(--secondary, rgba(127, 127, 127, 0.18));
+    color: var(--foreground, #18181b);
+  }
+
+  .models-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .combo-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 1px;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .tag.pareto {
+    background: rgba(34, 197, 94, 0.14);
+    color: var(--success, #16a34a);
+  }
+  .tag.fav {
+    background: rgba(245, 158, 11, 0.16);
+    color: var(--warning, #d97706);
+  }
+
+  .model-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .model-name {
+    font-weight: 600;
+    color: var(--foreground, #18181b);
+    word-break: break-word;
+  }
+
+  .model-sub {
+    font-size: 11px;
+    color: var(--muted-foreground, #71717a);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .provider-pill {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: var(--secondary, rgba(127, 127, 127, 0.12));
+    color: var(--muted-foreground, #71717a);
+  }
+
+  .combo-metrics {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+    flex-shrink: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .score-big {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--primary, #3b82f6);
+  }
+
+  .score-big span {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted-foreground, #71717a);
+    margin-left: 2px;
+  }
+
+  .metric-pair {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--foreground, #18181b);
+    font-weight: 600;
+  }
+
+  .metric-cost {
+    color: var(--success, #16a34a);
+  }
+
+  .metric-time {
+    font-size: 11px;
+    color: var(--muted-foreground, #71717a);
+  }
+
+  .combo-actions {
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px solid var(--border, rgba(127, 127, 127, 0.14));
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .switch-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  /* 折叠区（未入榜模型） */
+  details.unmatched-box {
+    background: var(--card, rgba(127, 127, 127, 0.05));
+    border: 1px solid var(--border, rgba(127, 127, 127, 0.2));
+    border-radius: var(--radius, 10px);
+    padding: 12px 16px;
+  }
+
+  details.unmatched-box summary {
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted-foreground, #71717a);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  details.unmatched-box summary .summary-toggle {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  details.unmatched-box summary::-webkit-details-marker { display: none; }
+
+  .unmatched-list {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .unmatched-item {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--secondary, rgba(127, 127, 127, 0.12));
+    color: var(--muted-foreground, #71717a);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 28px 16px;
+    color: var(--muted-foreground, #71717a);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    background: var(--popover, #18181b);
+    color: var(--popover-foreground, #fafafa);
+    border: 1px solid var(--border, rgba(127, 127, 127, 0.3));
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+    z-index: 40;
+    max-width: 92%;
+    text-align: center;
+  }
+  .toast.show { opacity: 1; }
+
+  .show-more-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: 4px;
+  }
+
+  /* 窄屏（手机 ~360px）自适应 */
+  @media (max-width: 600px) {
+    .controls-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .ctrl-size, .ctrl-pref { grid-column: span 2; }
+    .ctrl-min, .ctrl-budg { grid-column: span 1; }
+    .combo-main {
+      flex-direction: column;
+    }
+    .combo-metrics {
+      width: 100%;
+      flex-direction: row;
+      align-items: baseline;
+      justify-content: space-between;
+      padding-left: 36px;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const RAW_DATA = /*__PAYLOAD_JSON__*/null;
+
+(function () {
+  const FALLBACK_DATA = {
+    generatedAt: new Date().toISOString(),
+    source: {
+      url: "https://artificialanalysis.ai/zh/leaderboards/models",
+      fetchedAt: new Date().toISOString(),
+      fromCache: false,
+      stale: false,
+      totalModels: 0
+    },
+    models: [],
+    t3Providers: [],
+    creators: [],
+    config: {
+      customGroups: [],
+      favoriteCombos: [],
+      defaults: {
+        mode: "t3",
+        comboSize: 2,
+        preference: 55,
+        minIntelligence: 35,
+        maxBudget: null,
+        excludeSameRelease: true
+      }
+    },
+    initialTopCombos: []
+  };
+
+  const DATA = (RAW_DATA && typeof RAW_DATA === "object") ? RAW_DATA : FALLBACK_DATA;
+  const defaults = Object.assign({
+    mode: "t3",
+    comboSize: 2,
+    preference: 55,
+    minIntelligence: 35,
+    maxBudget: null,
+    excludeSameRelease: true
+  }, (DATA.config && DATA.config.defaults) || {});
+
+  const modelsById = new Map();
+  (DATA.models || []).forEach(m => modelsById.set(m.id, m));
+
+  const enabledT3Ids = (DATA.t3Providers || [])
+    .filter(p => p.enabled && (p.matchedModelIds || []).length > 0)
+    .map(p => p.providerInstanceId);
+  const allMatchedT3Ids = (DATA.t3Providers || [])
+    .filter(p => (p.matchedModelIds || []).length > 0)
+    .map(p => p.providerInstanceId);
+
+  const initialMode = (defaults.mode === "t3" && allMatchedT3Ids.length === 0)
+    ? "creator"
+    : defaults.mode;
+
+  const state = {
+    mode: initialMode, // "t3" | "creator" | "custom"
+    selectedT3Providers: new Set(enabledT3Ids.length ? enabledT3Ids : allMatchedT3Ids),
+    selectedCreators: new Set((DATA.creators || []).slice(0, 6).map(c => c.name)),
+    customGroups: JSON.parse(JSON.stringify((DATA.config && DATA.config.customGroups) || [])),
+    selectedGroupId: ((DATA.config && DATA.config.customGroups && DATA.config.customGroups[0]) ? DATA.config.customGroups[0].id : null),
+    showGroupCreator: false,
+    draftGroupName: "",
+    draftGroupCreators: new Set(),
+    draftGroupT3: new Set(enabledT3Ids),
+    comboSize: defaults.comboSize === 3 ? 3 : 2,
+    preference: typeof defaults.preference === "number" ? defaults.preference : 55,
+    minIntelligence: typeof defaults.minIntelligence === "number" ? defaults.minIntelligence : 35,
+    maxBudget: defaults.maxBudget != null ? String(defaults.maxBudget) : "",
+    excludeSameRelease: defaults.excludeSameRelease !== false,
+    showCount: 5,
+    highlightedKey: null,
+    favoriteKeySet: new Set(
+      ((DATA.config && DATA.config.favoriteCombos) || []).map(f => (f.modelIds || []).slice().sort().join("|"))
+    )
+  };
+
+  if (state.selectedCreators.size === 0 && (DATA.creators || []).length > 0) {
+    DATA.creators.forEach(c => state.selectedCreators.add(c.name));
+  }
+
+  let toastTimer = null;
+  function showToast(msg) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+  }
+
+  function copyText(text, okMsg) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(
+        () => showToast(okMsg || "已复制，直接粘贴发给我即可生效"),
+        () => fallbackCopy(text, okMsg)
+      );
+    } else {
+      fallbackCopy(text, okMsg);
+    }
+  }
+
+  function fallbackCopy(text, okMsg) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      showToast(okMsg || "已复制，直接粘贴发给我即可生效");
+    } catch (_) {
+      showToast("复制失败，请手动在对话里说明即可");
+    }
+    document.body.removeChild(ta);
+  }
+
+  function esc(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function fmtCost(v) {
+    if (v == null || isNaN(v)) return "-";
+    if (v < 0.01) return "$" + v.toFixed(4);
+    if (v < 1) return "$" + v.toFixed(3);
+    return "$" + v.toFixed(2);
+  }
+
+  function fmtTime(sec) {
+    if (!sec || isNaN(sec)) return "-";
+    if (sec < 60) return Math.round(sec) + "秒";
+    return (sec / 60).toFixed(1) + "分钟";
+  }
+
+  function fmtDateShort(iso) {
+    if (!iso) return "";
+    try {
+      const d = new Date(iso);
+      const pad = n => String(n).padStart(2, "0");
+      return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function getActiveCandidates() {
+    const pool = new Map();
+    const allModels = DATA.models || [];
+
+    if (state.mode === "t3") {
+      (DATA.t3Providers || []).forEach(p => {
+        if (!state.selectedT3Providers.has(p.providerInstanceId)) return;
+        (p.matchedModelIds || []).forEach(mid => {
+          const m = modelsById.get(mid);
+          if (m) pool.set(m.id, m);
+        });
+      });
+    } else if (state.mode === "creator") {
+      allModels.forEach(m => {
+        if (state.selectedCreators.has(m.creator)) {
+          pool.set(m.id, m);
+        }
+      });
+    } else if (state.mode === "custom") {
+      const grp = state.customGroups.find(g => g.id === state.selectedGroupId);
+      if (grp) {
+        const gCreators = new Set(grp.creators || []);
+        const gT3 = new Set(grp.t3ProviderIds || []);
+        const gInclude = new Set(grp.includeModelIds || []);
+        const gExclude = new Set(grp.excludeModelIds || []);
+
+        (DATA.t3Providers || []).forEach(p => {
+          if (!gT3.has(p.providerInstanceId)) return;
+          (p.matchedModelIds || []).forEach(mid => {
+            const m = modelsById.get(mid);
+            if (m && !gExclude.has(m.id)) pool.set(m.id, m);
+          });
+        });
+
+        allModels.forEach(m => {
+          if (gExclude.has(m.id)) return;
+          if (gCreators.has(m.creator) || gInclude.has(m.id)) {
+            pool.set(m.id, m);
+          }
+        });
+      }
+    }
+
+    const minIntel = Number(state.minIntelligence) || 0;
+    return Array.from(pool.values()).filter(m =>
+      typeof m.intelligenceIndex === "number" &&
+      m.intelligenceIndex >= minIntel &&
+      typeof m.costPerTask === "number" &&
+      m.costPerTask > 0
+    );
+  }
+
+  function computeCombos(candidates) {
+    const k = state.comboSize;
+    if (candidates.length < k) return { combos: [], totalValid: 0, pruned: false };
+
+    let list = candidates.slice();
+    let pruned = false;
+
+    // 与后端保持一致：3 模型组合且候选数 > 35 时保留高分 Top 22 与高性价比 Top 18 并集
+    if (k === 3 && list.length > 35) {
+      pruned = true;
+      const byScore = list.slice().sort((a, b) => b.intelligenceIndex - a.intelligenceIndex).slice(0, 22);
+      const byValue = list.slice().sort((a, b) =>
+        (b.intelligenceIndex / Math.sqrt(b.costPerTask)) - (a.intelligenceIndex / Math.sqrt(a.costPerTask))
+      ).slice(0, 18);
+      const merged = new Map();
+      byScore.forEach(m => merged.set(m.id, m));
+      byValue.forEach(m => merged.set(m.id, m));
+      list = Array.from(merged.values());
+    }
+
+    const maxBudget = state.maxBudget.trim() !== "" ? parseFloat(state.maxBudget) : null;
+    const validBudget = (maxBudget != null && !isNaN(maxBudget) && maxBudget > 0) ? maxBudget : null;
+    const excludeSame = state.excludeSameRelease;
+
+    const rawCombos = [];
+    const n = list.length;
+
+    if (k === 2) {
+      for (let i = 0; i < n; i++) {
+        const a = list[i];
+        for (let j = i + 1; j < n; j++) {
+          const b = list[j];
+          if (excludeSame && a.releaseSlug && b.releaseSlug && a.releaseSlug === b.releaseSlug) continue;
+          const totalCost = a.costPerTask + b.costPerTask;
+          if (validBudget != null && totalCost > validBudget) continue;
+          const totalScore = a.intelligenceIndex + b.intelligenceIndex;
+          const totalTimeSec = (a.timePerTaskSec || 0) + (b.timePerTaskSec || 0);
+          const models = [a, b].sort((x, y) => y.intelligenceIndex - x.intelligenceIndex);
+          rawCombos.push({
+            key: models.map(m => m.id).slice().sort().join("|"),
+            models,
+            totalScore,
+            totalCost,
+            totalTimeSec
+          });
+        }
+      }
+    } else {
+      for (let i = 0; i < n; i++) {
+        const a = list[i];
+        for (let j = i + 1; j < n; j++) {
+          const b = list[j];
+          if (excludeSame && a.releaseSlug && b.releaseSlug && a.releaseSlug === b.releaseSlug) continue;
+          const costAB = a.costPerTask + b.costPerTask;
+          if (validBudget != null && costAB > validBudget) continue;
+          for (let l = j + 1; l < n; l++) {
+            const c = list[l];
+            if (excludeSame && c.releaseSlug && (c.releaseSlug === a.releaseSlug || c.releaseSlug === b.releaseSlug)) continue;
+            const totalCost = costAB + c.costPerTask;
+            if (validBudget != null && totalCost > validBudget) continue;
+            const totalScore = a.intelligenceIndex + b.intelligenceIndex + c.intelligenceIndex;
+            const totalTimeSec = (a.timePerTaskSec || 0) + (b.timePerTaskSec || 0) + (c.timePerTaskSec || 0);
+            const models = [a, b, c].sort((x, y) => y.intelligenceIndex - x.intelligenceIndex);
+            rawCombos.push({
+              key: models.map(m => m.id).slice().sort().join("|"),
+              models,
+              totalScore,
+              totalCost,
+              totalTimeSec
+            });
+          }
+        }
+      }
+    }
+
+    if (rawCombos.length === 0) return { combos: [], totalValid: 0, pruned };
+
+    // 帕累托最优判定（与后端 mark_pareto 保持完全一致：同分同价并列保留）
+    const byCost = rawCombos.slice().sort((a, b) => (a.totalCost - b.totalCost) || (b.totalScore - a.totalScore));
+    let bestScoreSoFar = -Infinity;
+    let bestCostAtBest = null;
+    for (let i = 0; i < byCost.length; i++) {
+      const c = byCost[i];
+      if (c.totalScore > bestScoreSoFar + 1e-9) {
+        bestScoreSoFar = c.totalScore;
+        bestCostAtBest = c.totalCost;
+        c.isPareto = true;
+      } else {
+        c.isPareto = Math.abs(c.totalScore - bestScoreSoFar) <= 1e-9 &&
+          bestCostAtBest != null && Math.abs(c.totalCost - bestCostAtBest) <= 1e-9;
+      }
+    }
+
+    let minScore = Infinity, maxScore = -Infinity;
+    let minLogCost = Infinity, maxLogCost = -Infinity;
+    for (let i = 0; i < rawCombos.length; i++) {
+      const c = rawCombos[i];
+      if (c.totalScore < minScore) minScore = c.totalScore;
+      if (c.totalScore > maxScore) maxScore = c.totalScore;
+      const lc = Math.log10(Math.max(c.totalCost, 0.001));
+      c._logCost = lc;
+      if (lc < minLogCost) minLogCost = lc;
+      if (lc > maxLogCost) maxLogCost = lc;
+    }
+
+    const wScore = state.preference / 100;
+    const wCost = 1 - wScore;
+    const scoreSpan = maxScore - minScore;
+    const costSpan = maxLogCost - minLogCost;
+
+    for (let i = 0; i < rawCombos.length; i++) {
+      const c = rawCombos[i];
+      const scoreNorm = scoreSpan > 1e-9 ? (c.totalScore - minScore) / scoreSpan : 1.0;
+      const costNorm = costSpan > 1e-9 ? (maxLogCost - c._logCost) / costSpan : 1.0;
+      c.compositeScore = Math.round((wScore * scoreNorm + wCost * costNorm) * 1000) / 10;
+    }
+
+    rawCombos.sort((a, b) => {
+      if (b.compositeScore !== a.compositeScore) return b.compositeScore - a.compositeScore;
+      if (a.isPareto !== b.isPareto) return a.isPareto ? -1 : 1;
+      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+      return a.totalCost - b.totalCost;
+    });
+
+    return { combos: rawCombos, totalValid: rawCombos.length, pruned };
+  }
+
+  function getSelectedUnmatched() {
+    if (state.mode !== "t3") return [];
+    const list = [];
+    (DATA.t3Providers || []).forEach(p => {
+      if (!state.selectedT3Providers.has(p.providerInstanceId)) return;
+      (p.unmatchedModels || []).forEach(u => {
+        list.push({ provider: p.displayName, label: u.label || u.modelId, reason: u.reason || "榜单暂无数据" });
+      });
+    });
+    return list;
+  }
+
+  function renderScatterSVG(combos) {
+    if (!combos.length) return "";
+    const isNarrow = typeof window !== "undefined" && window.innerWidth <= 500;
+    const W = isNarrow ? 360 : 680;
+    const H = 224;
+    const padL = isNarrow ? 36 : 44, padR = 18, padT = 22, padB = 28;
+    const plotW = W - padL - padR;
+    const plotH = H - padT - padB;
+
+    // 限制渲染普通散点数量保证 SVG 丝滑，始终保留全部帕累托点与 Top 10
+    const topKeys = new Set(combos.slice(0, 10).map(c => c.key));
+    const sample = [];
+    const maxBgPoints = 180;
+    const bgPool = combos.filter(c => !c.isPareto && !topKeys.has(c.key));
+    const step = bgPool.length > maxBgPoints ? bgPool.length / maxBgPoints : 1;
+    for (let i = 0; i < bgPool.length && sample.length < maxBgPoints; i += step) {
+      sample.push(bgPool[Math.floor(i)]);
+    }
+    const paretoPoints = combos.filter(c => c.isPareto).sort((a, b) => a.totalCost - b.totalCost);
+    const top5 = combos.slice(0, 5);
+
+    const allPlotted = sample.concat(paretoPoints, top5);
+    let minC = Infinity, maxC = -Infinity, minS = Infinity, maxS = -Infinity;
+    allPlotted.forEach(c => {
+      if (c.totalCost < minC) minC = c.totalCost;
+      if (c.totalCost > maxC) maxC = c.totalCost;
+      if (c.totalScore < minS) minS = c.totalScore;
+      if (c.totalScore > maxS) maxS = c.totalScore;
+    });
+
+    const useLog = (maxC / Math.max(minC, 0.001)) > 6;
+    const xVal = v => useLog ? Math.log10(Math.max(v, 0.001)) : v;
+    const xMinRaw = xVal(minC), xMaxRaw = xVal(maxC);
+    const xPad = (xMaxRaw - xMinRaw) * 0.06 || 0.2;
+    const xMin = xMinRaw - xPad, xMax = xMaxRaw + xPad;
+
+    const yPad = (maxS - minS) * 0.09 || 5;
+    const yMin = Math.max(0, minS - yPad), yMax = maxS + yPad;
+
+    const sx = v => padL + ((xVal(v) - xMin) / (xMax - xMin || 1)) * plotW;
+    const sy = v => padT + plotH - ((v - yMin) / (yMax - yMin || 1)) * plotH;
+
+    // 刻度线
+    const yTicks = [0, 0.25, 0.5, 0.75, 1].map(t => yMin + t * (yMax - yMin));
+    const xTickFracs = isNarrow ? [0, 0.5, 1] : [0, 0.25, 0.5, 0.75, 1];
+    const xTicks = xTickFracs.map(t => {
+      const xv = xMin + t * (xMax - xMin);
+      return useLog ? Math.pow(10, xv) : Math.max(0, xv);
+    });
+
+    const gridLines = yTicks.map(v => {
+      const y = sy(v).toFixed(1);
+      return `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="var(--border, rgba(127,127,127,0.18))" stroke-dasharray="3 3" />
+        <text x="${padL - 7}" y="${Number(y) + 3}" text-anchor="end" font-size="10.5" fill="var(--muted-foreground, #71717a)">${v.toFixed(0)}</text>`;
+    }).join("");
+
+    const xLabels = xTicks.map((v, idx) => {
+      const x = sx(v).toFixed(1);
+      const anchor = idx === 0 ? "start" : idx === xTicks.length - 1 ? "end" : "middle";
+      return `<text x="${x}" y="${H - 8}" text-anchor="${anchor}" font-size="10.5" fill="var(--muted-foreground, #71717a)">${fmtCost(v)}</text>`;
+    }).join("");
+
+    const paretoPath = paretoPoints.length >= 2
+      ? `<path d="${paretoPoints.map((c, idx) => `${idx === 0 ? "M" : "L"}${sx(c.totalCost).toFixed(1)},${sy(c.totalScore).toFixed(1)}`).join(" ")}" fill="none" stroke="var(--success, #22c55e)" stroke-width="1.75" stroke-opacity="0.72" />`
+      : "";
+
+    const bgDots = sample.map(c =>
+      `<circle class="scatter-pt" data-key="${esc(c.key)}" cx="${sx(c.totalCost).toFixed(1)}" cy="${sy(c.totalScore).toFixed(1)}" r="3.2" fill="var(--muted-foreground, #71717a)" fill-opacity="0.28" style="cursor:pointer" />`
+    ).join("");
+
+    const paretoDots = paretoPoints.filter(c => !top5.some(t => t.key === c.key)).map(c =>
+      `<circle class="scatter-pt" data-key="${esc(c.key)}" cx="${sx(c.totalCost).toFixed(1)}" cy="${sy(c.totalScore).toFixed(1)}" r="4.5" fill="var(--success, #22c55e)" fill-opacity="0.85" stroke="var(--card, #fff)" stroke-width="1.2" style="cursor:pointer" />`
+    ).join("");
+
+    const topDots = top5.slice().reverse().map((c, ridx) => {
+      const rank = top5.length - ridx;
+      const cx = sx(c.totalCost).toFixed(1);
+      const cy = sy(c.totalScore).toFixed(1);
+      const isFirst = rank === 1;
+      const fill = isFirst ? "var(--primary, #3b82f6)" : "var(--warning, #f59e0b)";
+      const r = isFirst ? 8.5 : 7;
+      return `<g class="scatter-pt" data-key="${esc(c.key)}" style="cursor:pointer">
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" stroke="var(--card, #ffffff)" stroke-width="1.8" />
+        <text x="${cx}" y="${Number(cy) + 3.5}" text-anchor="middle" font-size="9.5" font-weight="700" fill="#ffffff">${rank}</text>
+      </g>`;
+    }).join("");
+
+    return `<svg class="chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+      ${gridLines}
+      <line x1="${padL}" y1="${padT + plotH}" x2="${W - padR}" y2="${padT + plotH}" stroke="var(--border, rgba(127,127,127,0.3))" />
+      ${xLabels}
+      <text x="${padL + 2}" y="${padT - 7}" font-size="10.5" fill="var(--muted-foreground, #71717a)">组合总能力分 ↑</text>
+      <text x="${W - padR}" y="${padT - 7}" text-anchor="end" font-size="10.5" fill="var(--muted-foreground, #71717a)">横轴：每任务总成本${useLog ? "（对数）" : ""}</text>
+      ${paretoPath}
+      ${bgDots}
+      ${paretoDots}
+      ${topDots}
+    </svg>`;
+  }
+
+  function buildSwitchCommand(m) {
+    const match = (m.t3Matches && m.t3Matches[0]) || null;
+    if (match) {
+      const optPart = (match.effortOptionId && match.effortValue)
+        ? `（${match.effortOptionId}=${match.effortValue}）`
+        : "";
+      return `请帮我把当前对话切换到 ${match.providerDisplayName} 的 ${m.name}${optPart}。`;
+    }
+    return `请帮我把当前对话切换到模型 ${m.name}（${m.creator}）。`;
+  }
+
+  function buildFavoriteCommand(combo) {
+    const names = combo.models.map(m => m.name).join(" + ");
+    const ids = combo.models.map(m => m.id).join(",");
+    return `请把组合 [${names}]（模型ID: ${ids}）保存为我的默认黄金组合偏好。`;
+  }
+
+  function buildSaveGroupCommand(group) {
+    const parts = [];
+    if (group.t3ProviderIds && group.t3ProviderIds.length) {
+      parts.push(`T3渠道: ${group.t3ProviderIds.join(",")}`);
+    }
+    if (group.creators && group.creators.length) {
+      parts.push(`原厂: ${group.creators.join(",")}`);
+    }
+    return `请帮我把自定义提供商分组「${group.name}」（${parts.join("；") || "无"}）永久保存到 t3-model-combo 配置档。`;
+  }
+
+  function render() {
+    const root = document.getElementById("app");
+    const candidates = getActiveCandidates();
+    const { combos, totalValid } = computeCombos(candidates);
+    const unmatched = getSelectedUnmatched();
+
+    const activeProviderCount = state.mode === "t3"
+      ? state.selectedT3Providers.size
+      : state.mode === "creator"
+        ? state.selectedCreators.size
+        : (state.selectedGroupId ? 1 : 0);
+
+    const sourceStatus = DATA.source && DATA.source.stale
+      ? "离线缓存"
+      : (DATA.source && DATA.source.fromCache ? "本地缓存" : "实时榜单");
+    const fetchedLabel = fmtDateShort(DATA.source && DATA.source.fetchedAt);
+
+    // 提供商区域内容
+    let providerBodyHtml = "";
+    if (state.mode === "t3") {
+      const providers = DATA.t3Providers || [];
+      if (providers.length === 0) {
+        providerBodyHtml = `<div style="font-size:12px;color:var(--muted-foreground,#71717a)">当前未传入 T3 渠道信息，已可切换到「模型原厂」或「自定义分组」查看全榜单组合。</div>`;
+      } else {
+        providerBodyHtml = `<div class="chips">` + providers.map(p => {
+          const sel = state.selectedT3Providers.has(p.providerInstanceId);
+          const cnt = (p.matchedModelIds || []).length;
+          const statusNote = p.enabled ? "" : " · 未启用";
+          return `<button type="button" class="chip ${sel ? "selected" : ""} ${p.enabled ? "" : "disabled-provider"}" data-action="toggle-t3" data-id="${esc(p.providerInstanceId)}">
+            <span class="chip-dot" style="background:${p.enabled ? "var(--success, #22c55e)" : "var(--muted-foreground, #71717a)"}"></span>
+            <span>${esc(p.displayName)}</span>
+            <span class="chip-count">${cnt}${statusNote}</span>
+          </button>`;
+        }).join("") + `</div>`;
+      }
+    } else if (state.mode === "creator") {
+      const creators = DATA.creators || [];
+      providerBodyHtml = `<div class="chips">` + creators.map(c => {
+        const sel = state.selectedCreators.has(c.name);
+        return `<button type="button" class="chip ${sel ? "selected" : ""}" data-action="toggle-creator" data-id="${esc(c.name)}">
+          <span class="chip-dot" style="background:${esc(c.color || "var(--primary, #3b82f6)")}"></span>
+          <span>${esc(c.name)}</span>
+          <span class="chip-count">${c.count}</span>
+        </button>`;
+      }).join("") + `</div>`;
+    } else {
+      const groups = state.customGroups;
+      const chipsHtml = groups.length
+        ? `<div class="chips">` + groups.map(g => {
+            const sel = g.id === state.selectedGroupId;
+            return `<button type="button" class="chip ${sel ? "selected" : ""}" data-action="select-group" data-id="${esc(g.id)}">
+              <span>${esc(g.name)}</span>
+              <span class="chip-count">${(g.t3ProviderIds || []).length + (g.creators || []).length}项</span>
+            </button>`;
+          }).join("") + `</div>`
+        : `<div style="font-size:12px;color:var(--muted-foreground,#71717a)">还没有自定义提供商分组，点右上角「+ 新建分组」马上搭一个。</div>`;
+
+      const activeGroup = groups.find(g => g.id === state.selectedGroupId);
+      const activeGroupBar = activeGroup ? `<div class="editor-row" style="margin-top:8px;justify-content:space-between">
+        <span style="font-size:11px;color:var(--muted-foreground,#71717a)">包含：${esc([].concat(activeGroup.t3ProviderIds || [], activeGroup.creators || []).join("、") || "空")}</span>
+        <button type="button" class="btn sm" data-action="copy-save-group" data-id="${esc(activeGroup.id)}">复制永久保存口令</button>
+      </div>` : "";
+
+      const editorHtml = state.showGroupCreator ? `<div class="custom-editor">
+        <div class="editor-row">
+          <input id="draft-group-name" class="input" style="flex:1;min-width:150px" placeholder="分组名，如：我的主力池" value="${esc(state.draftGroupName)}" />
+          <button type="button" class="btn primary" data-action="save-draft-group">创建并选中</button>
+          <button type="button" class="btn" data-action="cancel-draft-group">取消</button>
+        </div>
+        ${(DATA.t3Providers || []).length ? `<div>
+          <div style="font-size:11px;color:var(--muted-foreground,#71717a);margin-bottom:5px">加入 T3 渠道：</div>
+          <div class="chips">${DATA.t3Providers.map(p => `<button type="button" class="chip ${state.draftGroupT3.has(p.providerInstanceId) ? "selected" : ""}" data-action="draft-t3" data-id="${esc(p.providerInstanceId)}">${esc(p.displayName)}</button>`).join("")}</div>
+        </div>` : ""}
+        <div>
+          <div style="font-size:11px;color:var(--muted-foreground,#71717a);margin-bottom:5px">加入模型原厂：</div>
+          <div class="chips">${(DATA.creators || []).slice(0, 14).map(c => `<button type="button" class="chip ${state.draftGroupCreators.has(c.name) ? "selected" : ""}" data-action="draft-creator" data-id="${esc(c.name)}"><span class="chip-dot" style="background:${esc(c.color || "#3b82f6")}"></span>${esc(c.name)}</button>`).join("")}</div>
+        </div>
+      </div>` : "";
+
+      providerBodyHtml = chipsHtml + activeGroupBar + editorHtml;
+    }
+
+    const providerActionsHtml = state.mode === "t3"
+      ? `<button type="button" class="link-btn" data-action="t3-enabled-only">仅已启用</button>
+         <button type="button" class="link-btn" data-action="t3-all">全选</button>`
+      : state.mode === "creator"
+        ? `<button type="button" class="link-btn" data-action="creator-all">全选</button>
+           <button type="button" class="link-btn" data-action="creator-clear">清空</button>`
+        : `<button type="button" class="link-btn" data-action="open-draft-group">+ 新建分组</button>`;
+
+    // 组合列表
+    const visibleCombos = combos.slice(0, state.showCount);
+    let comboListHtml = "";
+    if (visibleCombos.length === 0) {
+      comboListHtml = `<div class="panel empty-state">
+        <div style="font-weight:600;color:var(--foreground,#18181b)">当前条件下没有匹配到有效组合</div>
+        <div style="font-size:12px">可能是勾选的提供商模型数不足 ${state.comboSize} 个，或能力门槛/预算上限设得偏严。</div>
+        <button type="button" class="btn primary" data-action="reset-filters">放宽筛选条件</button>
+      </div>`;
+    } else {
+      comboListHtml = `<div class="combo-list">` + visibleCombos.map((c, idx) => {
+        const rank = idx + 1;
+        const rankCls = rank === 1 ? "r1" : rank === 2 ? "r2" : rank === 3 ? "r3" : "";
+        const isFav = state.favoriteKeySet.has(c.key);
+        const isHl = state.highlightedKey === c.key;
+
+        const tagsHtml = (c.isPareto || isFav)
+          ? `<div class="combo-tags">
+              ${c.isPareto ? `<span class="tag pareto">帕累托最优</span>` : ""}
+              ${isFav ? `<span class="tag fav">已收藏默认</span>` : ""}
+            </div>`
+          : "";
+
+        const modelsHtml = c.models.map(m => {
+          const provs = (m.t3Matches || []).map(x => x.providerDisplayName);
+          const uniqueProvs = Array.from(new Set(provs));
+          const provTag = uniqueProvs.length ? `<span class="provider-pill">${esc(uniqueProvs.join(" / "))}</span>` : "";
+          return `<div class="model-row">
+            <span class="chip-dot" style="background:${esc(m.creatorColor || "var(--primary, #3b82f6)")}"></span>
+            <span class="model-name">${esc(m.name)}</span>
+            ${provTag}
+            <span class="model-sub">${m.intelligenceIndex.toFixed(1)}分 · ${fmtCost(m.costPerTask)}</span>
+          </div>`;
+        }).join("");
+
+        const switchBtns = c.models.map(m =>
+          `<button type="button" class="btn sm" data-action="copy-switch" data-mid="${esc(m.id)}">切到 ${esc(m.shortName || m.name)}</button>`
+        ).join("");
+
+        return `<div class="combo-card ${rank === 1 ? "top1" : ""} ${isHl ? "highlighted" : ""}" data-combo-key="${esc(c.key)}">
+          <div class="combo-main">
+            <div class="combo-left">
+              <div class="rank-badge ${rankCls}">#${rank}</div>
+              <div class="models-stack">
+                ${tagsHtml}
+                ${modelsHtml}
+              </div>
+            </div>
+            <div class="combo-metrics">
+              <div class="score-big">${c.compositeScore.toFixed(1)}<span>综合分</span></div>
+              <div class="metric-pair">
+                <span>总分 ${c.totalScore.toFixed(1)}</span>
+                <span class="metric-cost">${fmtCost(c.totalCost)}</span>
+              </div>
+              <div class="metric-time">约 ${fmtTime(c.totalTimeSec)} / 轮</div>
+            </div>
+          </div>
+          <div class="combo-actions">
+            <div class="switch-group">${switchBtns}</div>
+            <button type="button" class="btn sm" data-action="copy-fav" data-key="${esc(c.key)}">${isFav ? "再次复制默认口令" : "设为默认组合"}</button>
+          </div>
+        </div>`;
+      }).join("") + `</div>`;
+
+      if (combos.length > state.showCount) {
+        comboListHtml += `<div class="show-more-wrap">
+          <button type="button" class="btn" data-action="show-more">展开更多（还有 ${combos.length - state.showCount} 组）</button>
+        </div>`;
+      }
+    }
+
+    const unmatchedHtml = unmatched.length ? `<details class="unmatched-box">
+      <summary>
+        <span>以下 ${unmatched.length} 个已选 T3 模型在 Artificial Analysis 暂无榜单数据（已自动跳过）</span>
+        <span class="summary-toggle">展开查看 ▾</span>
+      </summary>
+      <div class="unmatched-list">
+        ${unmatched.map(u => `<span class="unmatched-item">${esc(u.provider)} · ${esc(u.label)}</span>`).join("")}
+      </div>
+    </details>` : "";
+
+    root.innerHTML = `
+      <div class="topbar">
+        <div class="meta-line">
+          <span class="meta-pill">
+            <span class="meta-dot ${DATA.source && DATA.source.stale ? "stale" : ""}"></span>
+            ${esc(sourceStatus)}${fetchedLabel ? " · " + esc(fetchedLabel) : ""}
+          </span>
+          <span>已选 <strong>${activeProviderCount}</strong> 项 · 候选 <strong>${candidates.length}</strong> 模型 · 有效 <strong>${totalValid}</strong> 组合</span>
+        </div>
+        <div class="segmented" role="tablist">
+          <button type="button" class="${state.mode === "t3" ? "active" : ""}" data-action="set-mode" data-mode="t3">T3 渠道</button>
+          <button type="button" class="${state.mode === "creator" ? "active" : ""}" data-action="set-mode" data-mode="creator">模型原厂</button>
+          <button type="button" class="${state.mode === "custom" ? "active" : ""}" data-action="set-mode" data-mode="custom">自定义分组</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            ${state.mode === "t3" ? "选择 T3 提供商范围" : state.mode === "creator" ? "选择模型原厂范围" : "我的自定义提供商分组"}
+          </div>
+          <div class="panel-actions">${providerActionsHtml}</div>
+        </div>
+        ${providerBodyHtml}
+      </div>
+
+      <div class="panel">
+        <div class="controls-grid">
+          <div class="ctrl-field ctrl-size">
+            <div class="ctrl-label"><span>组合规模</span></div>
+            <div class="segmented" style="width:100%">
+              <button type="button" style="flex:1" class="${state.comboSize === 2 ? "active" : ""}" data-action="set-size" data-size="2">2 模型</button>
+              <button type="button" style="flex:1" class="${state.comboSize === 3 ? "active" : ""}" data-action="set-size" data-size="3">3 模型</button>
+            </div>
+          </div>
+
+          <div class="ctrl-field ctrl-pref">
+            <div class="ctrl-label">
+              <span>排序偏向</span>
+              <span class="ctrl-val">能力 ${state.preference}% · 省钱 ${100 - state.preference}%</span>
+            </div>
+            <input id="pref-slider" type="range" min="0" max="100" step="5" value="${state.preference}" />
+            <div class="pref-axis"><span>更省钱</span><span>均衡</span><span>更强能力</span></div>
+          </div>
+
+          <div class="ctrl-field ctrl-min">
+            <div class="ctrl-label">
+              <span>能力门槛</span>
+              <span class="ctrl-val">≥ ${state.minIntelligence}</span>
+            </div>
+            <input id="min-intel-input" class="input" type="number" min="0" max="100" step="1" value="${state.minIntelligence}" />
+          </div>
+
+          <div class="ctrl-field ctrl-budg">
+            <div class="ctrl-label"><span>预算上限 ($)</span></div>
+            <input id="budget-input" class="input" type="number" min="0" step="0.1" placeholder="不限" value="${esc(state.maxBudget)}" />
+          </div>
+        </div>
+
+        <div class="ctrl-footer">
+          <label class="toggle-label">
+            <input id="exclude-same-cb" type="checkbox" ${state.excludeSameRelease ? "checked" : ""} />
+            <span>排除同一模型不同思考档位互相配对</span>
+          </label>
+          <span style="font-size:11px;color:var(--muted-foreground,#71717a)">成本口径：Artificial Analysis 每任务美元价</span>
+        </div>
+      </div>
+
+      ${combos.length > 0 ? `<div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">组合能力 vs 每任务成本分布</div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-swatch" style="background:var(--primary,#3b82f6)"></span>Top 1</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:var(--warning,#f59e0b)"></span>Top 2-5</span>
+            <span class="legend-item"><span class="legend-swatch" style="background:var(--success,#22c55e)"></span>帕累托最优线</span>
+          </div>
+        </div>
+        <div class="chart-wrap" id="chart-wrap">
+          ${renderScatterSVG(combos)}
+          <div class="chart-tooltip" id="chart-tooltip"></div>
+        </div>
+      </div>` : ""}
+
+      ${comboListHtml}
+      ${unmatchedHtml}
+    `;
+
+    bindEvents(combos);
+  }
+
+  function bindEvents(combos) {
+    const comboMap = new Map();
+    combos.forEach((c, idx) => comboMap.set(c.key, { combo: c, rank: idx + 1 }));
+
+    document.querySelectorAll("[data-action]").forEach(el => {
+      el.addEventListener("click", () => {
+        const act = el.dataset.action;
+        if (act === "set-mode") {
+          state.mode = el.dataset.mode;
+          state.showCount = 5;
+          render();
+        } else if (act === "toggle-t3") {
+          const id = el.dataset.id;
+          if (state.selectedT3Providers.has(id)) state.selectedT3Providers.delete(id);
+          else state.selectedT3Providers.add(id);
+          state.showCount = 5;
+          render();
+        } else if (act === "t3-enabled-only") {
+          state.selectedT3Providers = new Set(enabledT3Ids);
+          render();
+        } else if (act === "t3-all") {
+          state.selectedT3Providers = new Set(allMatchedT3Ids);
+          render();
+        } else if (act === "toggle-creator") {
+          const id = el.dataset.id;
+          if (state.selectedCreators.has(id)) state.selectedCreators.delete(id);
+          else state.selectedCreators.add(id);
+          state.showCount = 5;
+          render();
+        } else if (act === "creator-all") {
+          state.selectedCreators = new Set((DATA.creators || []).map(c => c.name));
+          render();
+        } else if (act === "creator-clear") {
+          state.selectedCreators.clear();
+          render();
+        } else if (act === "select-group") {
+          state.selectedGroupId = el.dataset.id;
+          state.showCount = 5;
+          render();
+        } else if (act === "open-draft-group") {
+          state.showGroupCreator = !state.showGroupCreator;
+          render();
+        } else if (act === "cancel-draft-group") {
+          state.showGroupCreator = false;
+          render();
+        } else if (act === "draft-t3") {
+          const id = el.dataset.id;
+          if (state.draftGroupT3.has(id)) state.draftGroupT3.delete(id);
+          else state.draftGroupT3.add(id);
+          render();
+        } else if (act === "draft-creator") {
+          const id = el.dataset.id;
+          if (state.draftGroupCreators.has(id)) state.draftGroupCreators.delete(id);
+          else state.draftGroupCreators.add(id);
+          render();
+        } else if (act === "save-draft-group") {
+          const nameInput = document.getElementById("draft-group-name");
+          const name = (nameInput ? nameInput.value : state.draftGroupName).trim();
+          if (!name) {
+            showToast("先给这个分组起个名字吧");
+            return;
+          }
+          if (state.draftGroupT3.size === 0 && state.draftGroupCreators.size === 0) {
+            showToast("请至少选一个 T3 渠道或模型原厂");
+            return;
+          }
+          const newGrp = {
+            id: "tmp-" + Date.now(),
+            name,
+            t3ProviderIds: Array.from(state.draftGroupT3),
+            creators: Array.from(state.draftGroupCreators),
+            includeModelIds: [],
+            excludeModelIds: []
+          };
+          state.customGroups.unshift(newGrp);
+          state.selectedGroupId = newGrp.id;
+          state.showGroupCreator = false;
+          state.draftGroupName = "";
+          showToast(`已创建临时分组「${name}」，可点“复制永久保存口令”写进配置档`);
+          render();
+        } else if (act === "copy-save-group") {
+          const grp = state.customGroups.find(g => g.id === el.dataset.id);
+          if (grp) copyText(buildSaveGroupCommand(grp), "已复制保存口令，发到对话里就能永久记住这个分组");
+        } else if (act === "set-size") {
+          state.comboSize = Number(el.dataset.size) === 3 ? 3 : 2;
+          state.showCount = 5;
+          render();
+        } else if (act === "reset-filters") {
+          state.minIntelligence = 0;
+          state.maxBudget = "";
+          state.excludeSameRelease = true;
+          if (state.mode === "t3") state.selectedT3Providers = new Set(allMatchedT3Ids);
+          if (state.mode === "creator") state.selectedCreators = new Set((DATA.creators || []).map(c => c.name));
+          render();
+        } else if (act === "show-more") {
+          state.showCount += 10;
+          render();
+        } else if (act === "copy-switch") {
+          const m = modelsById.get(el.dataset.mid);
+          if (m) {
+            copyText(buildSwitchCommand(m), `已复制切换「${m.name}」的口令，发到对话即可切换`);
+            el.classList.add("copied");
+            setTimeout(() => el.classList.remove("copied"), 1400);
+          }
+        } else if (act === "copy-fav") {
+          const entry = comboMap.get(el.dataset.key);
+          if (entry) {
+            copyText(buildFavoriteCommand(entry.combo), "已复制收藏口令，发到对话即可存为默认黄金组合");
+            el.classList.add("copied");
+            setTimeout(() => el.classList.remove("copied"), 1400);
+          }
+        }
+      });
+    });
+
+    const draftInput = document.getElementById("draft-group-name");
+    if (draftInput) {
+      draftInput.addEventListener("input", e => { state.draftGroupName = e.target.value; });
+    }
+
+    const prefSlider = document.getElementById("pref-slider");
+    if (prefSlider) {
+      prefSlider.addEventListener("input", e => {
+        state.preference = Number(e.target.value);
+        render();
+      });
+    }
+
+    const minIntelInput = document.getElementById("min-intel-input");
+    if (minIntelInput) {
+      minIntelInput.addEventListener("change", e => {
+        const v = parseFloat(e.target.value);
+        state.minIntelligence = isNaN(v) ? 0 : Math.max(0, Math.min(100, v));
+        state.showCount = 5;
+        render();
+      });
+    }
+
+    const budgetInput = document.getElementById("budget-input");
+    if (budgetInput) {
+      budgetInput.addEventListener("change", e => {
+        state.maxBudget = e.target.value;
+        state.showCount = 5;
+        render();
+      });
+    }
+
+    const exCb = document.getElementById("exclude-same-cb");
+    if (exCb) {
+      exCb.addEventListener("change", e => {
+        state.excludeSameRelease = e.target.checked;
+        state.showCount = 5;
+        render();
+      });
+    }
+
+    // 散点图交互
+    const chartWrap = document.getElementById("chart-wrap");
+    const tooltip = document.getElementById("chart-tooltip");
+    if (chartWrap && tooltip) {
+      chartWrap.querySelectorAll(".scatter-pt").forEach(pt => {
+        pt.addEventListener("mouseenter", e => {
+          const entry = comboMap.get(pt.dataset.key);
+          if (!entry) return;
+          const c = entry.combo;
+          tooltip.innerHTML = `<div style="font-weight:700;margin-bottom:2px">#${entry.rank} · 综合 ${c.compositeScore.toFixed(1)}分${c.isPareto ? " · 帕累托最优" : ""}</div>
+            <div>${c.models.map(m => esc(m.shortName || m.name)).join(" + ")}</div>
+            <div style="opacity:0.85;margin-top:2px">能力总分 ${c.totalScore.toFixed(1)} · 成本 ${fmtCost(c.totalCost)}</div>`;
+          tooltip.style.display = "block";
+          const rect = chartWrap.getBoundingClientRect();
+          const left = Math.min(Math.max(8, e.clientX - rect.left + 10), rect.width - 245);
+          const top = Math.max(4, e.clientY - rect.top - 58);
+          tooltip.style.left = left + "px";
+          tooltip.style.top = top + "px";
+        });
+        pt.addEventListener("mouseleave", () => { tooltip.style.display = "none"; });
+        pt.addEventListener("click", () => {
+          const key = pt.dataset.key;
+          const entry = comboMap.get(key);
+          if (!entry) return;
+          state.highlightedKey = key;
+          if (entry.rank > state.showCount) state.showCount = entry.rank;
+          render();
+          const card = document.querySelector(`[data-combo-key="${CSS.escape(key)}"]`);
+          if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      });
+    }
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

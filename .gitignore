@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Temporary rendered artifacts & local test outputs
+*.rendered.html
+.tmp/
+tmp/
+.coverage
+htmlcov/
+*.log
+.env
